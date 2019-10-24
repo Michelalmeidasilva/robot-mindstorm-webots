@@ -1,3 +1,31 @@
+
+Skip to content
+Pull requests
+Issues
+Marketplace
+Explore
+@Michelalmeidasilva
+Learn Git and GitHub without any code!
+
+Using the Hello World guide, you’ll start a branch, write comments, and open a pull request.
+
+1
+0
+
+    0
+
+Michelalmeidasilva/robot-mindstorm-webots
+Code
+Issues 0
+Pull requests 0
+Projects 0
+Wiki
+Security
+Insights
+Settings
+robot-mindstorm-webots/Rover.c
+@Michelalmeidasilva Michelalmeidasilva Correcao da funcao de Desviar 46a01a0 5 hours ago
+156 lines (126 sloc) 3.77 KB
   #include<stdio.h>
   #include"Rover.h"
   #include <webots/distance_sensor.h>
@@ -60,7 +88,7 @@
 
         case linha:
 
-          if(groundSensor > 30 && groundSensor < 63){
+          if(groundSensor > sensor_i && groundSensor < 63){
             rightSpeed = 2.0;
             leftSpeed = 2.0;
             estado = condicoes;
@@ -105,9 +133,9 @@ int verificaSensores(){
     rightSpeed = -1;
     avoidance_counter = 2000;
     return obstaculo;
-  } else if (wb_distance_sensor_get_value(groundSensor) > 40) {
+  } else if (wb_distance_sensor_get_value(groundSensor) > sensor_i) {
       return linha;
-  } else if((wb_distance_sensor_get_value(groundSensor) < 40)){
+  } else if((wb_distance_sensor_get_value(groundSensor) < sensor_i)){
       return foraLinha;
   }
   return condicoes;
