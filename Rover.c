@@ -1,155 +1,107 @@
-  #include<stdio.h>
-  #include"Rover.h"
-  #include <webots/distance_sensor.h>
-  #include <webots/motor.h>
-  #include <webots/robot.h>
-  #include <webots/touch_sensor.h>
-  #include <stdio.h>
-  #include <stdlib.h>
-  #define TIME_STEP 64
+/*
+ * Copyright 1996-2019 Cyberbotics Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+/*
+ * Description:  The controller for the Lego Mindstorm robot which follows a
+ *               line on the ground and avoids obstacles.
+ */
 
-  int estado = 0, avoidance_counter = 0;
-  int counter_teste = 0;
-  int segundos = -1;
-  
-  double leftSpeed=0, rightSpeed=0;
-  WbDeviceTag leftBumper ;
-  WbDeviceTag groundSensor ;
-  WbDeviceTag rightBumper ;
+#include <webots/distance_sensor.h>
+#include <webots/motor.h>
+#include <webots/robot.h>
+#include <webots/touch_sensor.h>
 
-  int main() {
-    wb_robot_init();
-    
-    leftBumper = wb_robot_get_device("S1");
-    groundSensor = wb_robot_get_device("S2");
-    rightBumper = wb_robot_get_device("S3");
+#define TIME_STEP 64
 
-    wb_touch_sensor_enable(leftBumper, TIME_STEP);
-    wb_touch_sensor_enable(rightBumper, TIME_STEP);
-    wb_distance_sensor_enable(groundSensor, TIME_STEP);
-    
-    WbDeviceTag left_motor = wb_robot_get_device("left wheel motor");
-    WbDeviceTag right_motor = wb_robot_get_device("right wheel motor");
-  
-    wb_motor_set_position(left_motor, INFINITY);
-    wb_motor_set_position(right_motor, INFINITY);
+int main() {
+  double leftSpeed, rightSpeed;
 
-    wb_motor_set_velocity(left_motor, 0.0);
-    wb_motor_set_velocity(right_motor, 0.0);
+  wb_robot_init();
 
-    while (wb_robot_step(TIME_STEP) != -1) {
-      
-      //imprime os sensores a aproximadamente 15 * 64ms ( 1 segundo)
-      one_second();
+  WbDeviceTag leftBumper = wb_robot_get_device("S1");
+  WbDeviceTag groundSensor = wb_robot_get_device("S2");
+  WbDeviceTag rightBumper = wb_robot_get_device("S3");
 
-      switch(estado){
-     
-        case condicoes: 
-          //Nao tem obstaculo
-          if (avoidance_counter == 0) 
-            estado = sensores;
-          //Obstaculo
-          else
-            estado = sensores;
-          break;
+  /* We use this counter to synchronise the different parts of the avoidance movement.*/
+  int avoidance_counter = 0;
 
-        case sensores:
-          estado = verificaSensores();
-          break;
+  wb_touch_sensor_enable(leftBumper, TIME_STEP);
+  wb_touch_sensor_enable(rightBumper, TIME_STEP);
+  wb_distance_sensor_enable(groundSensor, TIME_STEP);
 
-        case linha:
+  /* get a handler to the motors and set target position to infinity (speed control). */
+  WbDeviceTag left_motor = wb_robot_get_device("left wheel motor");
+  WbDeviceTag right_motor = wb_robot_get_device("right wheel motor");
+  wb_motor_set_position(left_motor, INFINITY);
+  wb_motor_set_position(right_motor, INFINITY);
+  wb_motor_set_velocity(left_motor, 0.0);
+  wb_motor_set_velocity(right_motor, 0.0);
 
-          if(groundSensor > sensor_i && groundSensor < 63){
-            rightSpeed = 2.0;
-            leftSpeed = 2.0;
-            estado = condicoes;
-          }
-          
-          estado = condicoes;
-          break;
-
-        case foraLinha:
-          if( groundSensor < 43){
-            rightSpeed= 0.2;
-            leftSpeed = 1.0;
-            estado = condicoes;
-          } else if(groundSensor < 23){ 
-            rightSpeed = 0.2;
-            leftSpeed = 1.0;
-            estado = condicoes;
-          }
-          estado = condicoes;
-          break;
-
-        case obstaculo:
-          desviar();
-          break;
+  while (wb_robot_step(TIME_STEP) != -1) {
+    /*
+     * If we are not avoiding an obstacle we check first the bumpers
+     * to know if we have bumped into one and then the groundSensor to
+     * know in which direction we should move.
+     */
+    if (avoidance_counter == 0) {
+      if (wb_touch_sensor_get_value(leftBumper) > 0 || wb_touch_sensor_get_value(rightBumper) > 0) {
+        leftSpeed = -0.6;
+        rightSpeed = -1;
+        avoidance_counter = 2000;
+      } else if (wb_distance_sensor_get_value(groundSensor) > 43) {
+        leftSpeed = 1;
+        rightSpeed = 0.2;
+      } else {
+        leftSpeed = 0.2;
+        rightSpeed = 1;
       }
-
-      if(counter_teste  > 300)
-        counter_teste = 0;
-
-      wb_motor_set_velocity(left_motor, leftSpeed);
-      wb_motor_set_velocity(right_motor, rightSpeed);
- 
-
+    } else {
+      /*
+       * If we are avoiding, the movement is seperated into three
+       * different parts. First we move back from the obstacle,
+       * slightly turning, then we move straight forward in order to
+       * avoid the obstacle. Finall we keep moving forward wut
+       * slightly turning in order to find the line.
+       */
+      if (avoidance_counter > 800) {
+        leftSpeed = -0.6;
+        rightSpeed = -1;
+      } else if (avoidance_counter > 600) {
+        leftSpeed = 1.5;
+        rightSpeed = 1.5;
+      } else if (avoidance_counter > 70) {
+        leftSpeed = 0.7 ;
+        rightSpeed = 1;
+        if (wb_distance_sensor_get_value(groundSensor) > 43)
+          avoidance_counter = 1;
+      } else {
+        leftSpeed = 5;
+        rightSpeed = 5;
+        if (wb_distance_sensor_get_value(groundSensor) > 43)
+          avoidance_counter = 1;
+      }
+      avoidance_counter--;
+    }
+    wb_motor_set_velocity(left_motor, leftSpeed);
+    wb_motor_set_velocity(right_motor, rightSpeed);
   }
+
   wb_robot_cleanup();
+
   return 0;
 }
 
-int verificaSensores(){
-  if (wb_touch_sensor_get_value(leftBumper) > 0 || wb_touch_sensor_get_value(rightBumper) > 0) {
-    leftSpeed = -0.6;
-    rightSpeed = -1;
-    avoidance_counter = 2000;
-    return obstaculo;
-  } else if (wb_distance_sensor_get_value(groundSensor) > sensor_i) {
-      return linha;
-  } else if((wb_distance_sensor_get_value(groundSensor) < sensor_i)){
-      return foraLinha;
-  }
-  return condicoes;
-}
 
-void imprimeSensores(){
-  printf("L=%lf\n", wb_touch_sensor_get_value(leftBumper) );
-  printf("R=%lf\n", wb_touch_sensor_get_value(rightBumper) );
-  printf("G=%lf\n", wb_distance_sensor_get_value(groundSensor) );
-  printf("Avoidance Counter = %d\n", avoidance_counter);
-}
-
-void desviar(){
-
-  if (avoidance_counter > 800) {
-    leftSpeed = -0.6;
-    rightSpeed = -1;
-  } else if (avoidance_counter > 600) {
-    leftSpeed = 1.5;
-    rightSpeed = 1.5;
-  } else if (avoidance_counter > 70) {
-    leftSpeed = 0.7 ;
-    rightSpeed = 1;
-    if (wb_distance_sensor_get_value(groundSensor) > 43){
-      avoidance_counter = 1;
-      estado = condicoes;
-    }
-  } else {
-    leftSpeed = 5;
-    rightSpeed = 5;
-    if (wb_distance_sensor_get_value(groundSensor) > 43)
-    avoidance_counter = 1;
-  }
-  avoidance_counter--;
-}
-
-
-void one_second(){
-   if( counter_teste % 15 == 1 ) {
-        imprimeSensores();
-        segundos++;
-        printf("segundos = %d\n", segundos);
-      }          
-    counter_teste++ ;
-}
