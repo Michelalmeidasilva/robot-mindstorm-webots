@@ -54,6 +54,7 @@
             estado = sensores;
           break;
 
+        //retorna na linha( ainda nao implementado ), reajuste ou obstaculo
         case sensores:
           estado = verificaSensores();
           break;
@@ -155,4 +156,61 @@ void one_second(){
         printf("segundos = %d\n", segundos);
       }          
     counter_teste++ ;
+}
+
+void parar(){
+  leftSpeed  =0;
+  rightSpeed =0;
+}
+
+_Bool acha_caminhos(){
+  _Bool resultado;
+  parar();
+  resultado = testa_direita();
+  printf("Resultado acha_caminhos: %d\n",resultado);
+  if(resultado == true){
+    return true;
+  } else {
+    resultado = testa_esquerda(); 
+    
+    if(resultado == true)
+      return true;
+  }
+  return false;
+}
+
+_Bool testa_direita(){
+  printf("Teste direita\n");
+
+  leftSpeed = 0.3;
+  rightSpeed = 2;
+
+  if(wb_distance_sensor_get_value(groundSensor) > VALOR_SENSOR ){
+    printf("%f\n",wb_distance_sensor_get_value(groundSensor));
+    parar();
+    return true;
+  }else{
+    rightSpeed = -0.3;
+    leftSpeed = -2;
+    parar();
+    return false;
+  }
+}
+
+_Bool testa_esquerda(){
+  printf("Teste esquerda\n");
+  leftSpeed = 0.3;
+  rightSpeed =2;
+   
+  if(wb_distance_sensor_get_value(groundSensor) > VALOR_SENSOR){
+    parar();
+    return true;
+  }else{
+    leftSpeed = -0.3;
+    rightSpeed = -2;
+    parar();
+    printf("Depois de parar (esquerda) %f\n", leftSpeed);
+    return false;
+  }
+  return false;
 }
