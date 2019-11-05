@@ -1,9 +1,16 @@
 void imprimeSensores();
 void desviar();
-int verificaSensores();
+void parar();
 void one_second();
+void desviar_2();
+int verificaSensores();
+_Bool acha_caminhos();
+_Bool testa_esquerda();
+_Bool testa_direita();
 
+#define VALOR_SENSOR 43
 #define sensor_i  43
+
 enum estados_robo{
   condicoes = 0,
   linha = 1,
@@ -22,7 +29,6 @@ enum estados_robo{
 //   double leftSpeed;
 //   double rightSpeed;
 // } typedef motores;
-
 
 
 
